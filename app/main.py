@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth
 from app.core.config import settings
 from app.middlewares.auth import AuthMiddleware
 from app.middlewares.proxy import ProxyMiddleware
+from app.middlewares.rate_limit import RateLimitMiddleware
 from app.utils.logger import logger
 
 # 创建FastAPI应用
@@ -25,14 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 添加流量控制中间件（最后添加，最先执行）
+app.add_middleware(RateLimitMiddleware)
+
 # 添加代理中间件 (最后添加的先执行)
 app.add_middleware(ProxyMiddleware)
 
 # 添加认证中间件
 app.add_middleware(AuthMiddleware)
-
-# 注册路由
-app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 
 @app.get("/")
 async def root():

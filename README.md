@@ -7,6 +7,7 @@
 - 请求拦截与路由转发
 - JWT认证与授权
 - 跨域资源共享(CORS)支持
+- 流量控制与限流保护
 - 灵活的服务配置
 
 ## 安装与设置
@@ -30,6 +31,9 @@ pip install -e .
 - `SECRET_KEY`: JWT签名密钥，在生产环境中应当更改为强密钥
 - `BACKEND_SERVICES`: 后端服务地址配置
 - `WHITELIST_PATHS`: 无需认证的路径白名单
+- `RATE_LIMIT_ENABLED`: 是否启用流量控制
+- `RATE_LIMIT_WINDOW_SIZE`: 时间窗口大小（秒）
+- `RATE_LIMIT_MAX_REQUESTS`: 时间窗口内允许的最大请求数
 
 ## 使用方法
 
@@ -83,6 +87,26 @@ curl -X GET "http://localhost:8080/api/user/profile" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
+### 流量控制
+
+API网关内置了流量控制功能，可以限制请求频率以防止过载和滥用：
+
+- 默认限制：每个IP地址每60秒最多100个请求
+- 响应头：API响应中包含以下头信息，帮助客户端理解限流情况
+  - `X-RateLimit-Limit`: 允许的最大请求数
+  - `X-RateLimit-Remaining`: 当前时间窗口内剩余的请求数
+  - `X-RateLimit-Reset`: 限流计数器重置的时间戳
+- 当请求超过限制时，API网关将返回`429 Too Many Requests`状态码
+
+可以在配置文件中自定义限流策略：
+
+```python
+# 流量控制配置
+RATE_LIMIT_ENABLED = True  # 是否启用流量控制
+RATE_LIMIT_WINDOW_SIZE = 60  # 时间窗口大小（秒）
+RATE_LIMIT_MAX_REQUESTS = 100  # 时间窗口内允许的最大请求数
+```
+
 ## 扩展与自定义
 
 ### 添加新的后端服务
@@ -91,7 +115,7 @@ curl -X GET "http://localhost:8080/api/user/profile" \
 
 ```python
 BACKEND_SERVICES: Dict[str, str] = {
-    "user": "http://localhost:8001",
+    "user": "http://localhost:8000",
     "product": "http://localhost:8002",
     "order": "http://localhost:8003",
     "new_service": "http://localhost:8004",  # 添加新服务
@@ -105,6 +129,10 @@ BACKEND_SERVICES: Dict[str, str] = {
 ### 自定义代理行为
 
 修改`app/middlewares/proxy.py`中的`ProxyMiddleware`类以自定义请求转发行为。
+
+### 自定义流量控制策略
+
+修改`app/middlewares/rate_limit.py`中的`RateLimitMiddleware`类以实现自定义的流量控制策略。
 
 ## API文档
 

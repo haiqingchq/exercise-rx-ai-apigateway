@@ -19,10 +19,20 @@ class Settings(BaseSettings):
     
     # 白名单路径（不需要认证的路径）
     WHITELIST_PATHS: List[str] = [
-        "/api/auth/login",
+        "/api/backend/api/v1/auth/login",
         "/docs",
         "/redoc",
         "/openapi.json",
+    ]
+    
+    # 流量控制配置
+    RATE_LIMIT_ENABLED: bool = True  # 是否启用流量控制
+    RATE_LIMIT_WINDOW_SIZE: int = 60  # 时间窗口大小（秒）
+    RATE_LIMIT_MAX_REQUESTS: int = 20  # 时间窗口内允许的最大请求数 (减小为20便于测试)
+    # 不进行流量控制的路径
+    RATE_LIMIT_EXCLUDE_PATHS: List[str] = [
+        "/health",
+        "/metrics",
     ]
 
     class Config:
