@@ -1,4 +1,6 @@
 import httpx
+import platform
+import traceback
 from fastapi import Request, Response, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
@@ -32,6 +34,7 @@ class ProxyMiddleware(BaseHTTPMiddleware):
         
         # 检查服务是否在配置中
         if service_name not in settings.BACKEND_SERVICES:
+            logger.error(f"未找到服务配置: '{service_name}'")
             return Response(
                 content=f"Service '{service_name}' not found",
                 status_code=status.HTTP_404_NOT_FOUND
@@ -73,19 +76,24 @@ class ProxyMiddleware(BaseHTTPMiddleware):
             # 获取请求体
             body = await request.body()
             
-            logger.info(f"Forwarding request to {target_url}")
+            # 记录系统信息和完整的请求信息，帮助调试
+            system_info = f"平台: {platform.system()}, 版本: {platform.version()}"
+            logger.info(f"系统信息: {system_info}")
+            logger.info(f"转发请求到: {target_url}, 方法: {method}, 参数: {params}")
             
             # 创建异步HTTP客户端并发送请求
-            async with httpx.AsyncClient() as client:
+            timeout = httpx.Timeout(30.0, connect=10.0)  # 增加连接超时时间
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.request(
                     method=method,
                     url=target_url,
                     headers=headers,
                     params=params,
                     content=body,
-                    timeout=30.0,  # 设置超时时间
                     follow_redirects=True
                 )
+                
+                logger.info(f"请求成功, 状态码: {response.status_code}")
                 
                 # 创建响应
                 return Response(
@@ -94,9 +102,34 @@ class ProxyMiddleware(BaseHTTPMiddleware):
                     headers=dict(response.headers),
                 )
                 
-        except httpx.RequestError as e:
-            logger.error(f"Error forwarding request: {str(e)}")
+        except httpx.ConnectError as e:
+            error_msg = f"连接错误 ({target_url}): {str(e)}"
+            logger.error(error_msg)
+            logger.error(f"目标服务可能未运行或不可达。系统: {platform.system()}")
             return Response(
-                content=f"Error forwarding request: {str(e)}",
+                content=error_msg,
                 status_code=status.HTTP_502_BAD_GATEWAY
+            )
+        except httpx.TimeoutException as e:
+            error_msg = f"请求超时 ({target_url}): {str(e)}"
+            logger.error(error_msg)
+            return Response(
+                content=error_msg,
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT
+            )
+        except httpx.RequestError as e:
+            error_msg = f"转发请求错误 ({target_url}): {str(e)}"
+            logger.error(error_msg)
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            return Response(
+                content=error_msg,
+                status_code=status.HTTP_502_BAD_GATEWAY
+            )
+        except Exception as e:
+            error_msg = f"未知错误 ({target_url}): {str(e)}"
+            logger.error(error_msg)
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            return Response(
+                content=error_msg,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) 
