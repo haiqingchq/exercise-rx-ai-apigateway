@@ -5,7 +5,7 @@ def main():
     """
     启动API网关服务
     """
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=10001)
 
 
 if __name__ == "__main__":

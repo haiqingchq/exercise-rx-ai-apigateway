@@ -49,4 +49,4 @@ if __name__ == "__main__":
 
     import uvicorn
     logger.info(f"Starting {settings.APP_NAME}")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True) 
+    uvicorn.run("app.main:app", host="0.0.0.0", port=10001, reload=True) 

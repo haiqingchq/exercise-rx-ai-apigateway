@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # 白名单路径（不需要认证的路径）
     WHITELIST_PATHS: List[str] = [
-        "/api/backend/api/v1/auth/login",
+        "/api/backend/v1/auth/login",
         "/docs",
         "/redoc",
         "/openapi.json",

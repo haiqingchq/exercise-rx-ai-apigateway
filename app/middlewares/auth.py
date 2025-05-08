@@ -15,7 +15,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next):
-        logger.info(f"请求路径: {request.url.path}")
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         # 检查路径是否在白名单中
         path = request.url.path
         if path in settings.WHITELIST_PATHS:
@@ -23,6 +25,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
         # 从请求头中获取Authorization
         authorization = request.headers.get("Authorization")
+        logger.info(f"Authorization: {authorization}")
         if not authorization or not authorization.startswith("Bearer "):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
